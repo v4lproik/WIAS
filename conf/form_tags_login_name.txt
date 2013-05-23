@@ -1,0 +1,8 @@
+password
+pass
+lpass
+pwd
+login
+user
+username
+admin

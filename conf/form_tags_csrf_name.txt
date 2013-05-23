@@ -1,0 +1,6 @@
+csrf
+_csrf
+__csrf
+csrf-token
+_crsf-token
+token

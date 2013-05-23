@@ -1,0 +1,18 @@
+You have logged in as
+welcome #USERNAME
+hi #USERNAME
+hi ! #USERNAME
+Welcome ! #USERNAME
+logout(#USERNAME)
+logout (#USERNAME)
+log out(#USERNAME)
+log out (#USERNAME)
+welcome
+log out
+logout
+Deconnexion
+hi.
+hi!
+hi !
+hi
+The most recent request was denied because it contained an invalid security token. Please refresh the page and try again.
