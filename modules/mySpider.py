@@ -27,11 +27,12 @@ except ImportError, err:
 
 class mySpider():
 
-	def __init__(self, objReq, objHtml, display=False):
+	def __init__(self, objReq, objHtml, display=False, verbosity=True):
 		self.objReq = objReq
 		self.objHtml = objHtml
 		self.links_tested = [objReq.domain]
 		self.links = [objReq.domain]
+		self.verbosity = verbosity
 
 	def crawl(self, callback = None):
 		
@@ -43,17 +44,26 @@ class mySpider():
 				url = self.links[0]
 				self.links.pop(0)
 
-				if callback == "LoginForm":
-					all_form = htmlAnalyser.getAllForm(content)
-					for form_u in all_form:
-						input_match, form = self.objHtml.isThereALoginForm(form_u, True)
+				if self.verbosity:
+					print "  [+]  " + str(response.code) + " | " + str(url)
 
-						if input_match != []:
-							self.login_form_link = url
-							self.login_form = form
-							return
-						else:
-							self.login_form = None
+				if callback == "LoginForm":
+					
+					if response.code == 401:
+						self.login_form_link = url
+						self.login_form = None
+						return
+					else:
+						all_form = htmlAnalyser.getAllForm(content)
+						for form_u in all_form:
+							input_match, form = self.objHtml.isThereALoginForm(form_u, True)
+
+							if input_match != []:
+								self.login_form_link = url
+								self.login_form = form
+								return
+							else:
+								self.login_form = None
 
 				tags = htmlAnalyser.extractAllLinks(content)
 				#print tags
