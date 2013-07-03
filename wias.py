@@ -61,7 +61,7 @@ except ImportError, err:
 def banner():
     banner = '''
     |----------------------------------------------------------|
-    |              Web Interface Auto Submit 1.0               |
+    |              Web Interface Auto Submit 1.1               |
     |                         V4lproik                         |
     |----------------------------------------------------------|\n'''
     print banner
