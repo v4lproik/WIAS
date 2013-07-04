@@ -52,7 +52,7 @@ No installation required
 ## Execution
 ```
 	    |----------------------------------------------------------|
-    |              Web Interface Auto Submit 1.0               |
+    |              Web Interface Auto Submit 1.2               |
     |                         V4lproik                         |
     |----------------------------------------------------------|
 

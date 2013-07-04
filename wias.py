@@ -23,7 +23,7 @@ It has not been design for handling javascript "strings transformation" submissi
 
 __author__ = "v4lproik"
 __date__ = "27/04/2013"
-__version__ = "1.0"
+__version__ = "1.2"
 __maintainer__ = "v4lproik"
 __email__ = "v4lproik@gmail.com"
 __status__ = "Development"
@@ -222,8 +222,17 @@ if __name__ == "__main__":
         # Run test for each web interface
         for domain in dic_domain:
 
-            objConf.printMessage(
-                "\n[*] Analyse running for url given : " + domain, "r", "find")
+            # check the domain syntax...
+            res_domain = objConf.checkIPConformity(domain)
+
+            if not res_domain:
+                objConf.printMessage(
+                    "\n[*] Syntax Error with domain given : " + domain, "r", "error")
+                continue
+            else:
+                domain = res_domain
+                objConf.printMessage(
+                    "\n[*] Analyse running for url given : " + domain, "r", "find")
 
             # Init variables for each domain
             flag_form = True
@@ -532,38 +541,41 @@ if __name__ == "__main__":
                             # get a response with bad creds
                             flag_response, response = objReq.request(url=urlparse.urljoin(
                                 objReq.getUrl(), action), method=method, data=data)
+
                             if flag_response:
                                 bad_cred = response.read()
                                 # print bad_cred
                                 # print
                                 # htmlAnalyser.getDifferenceBetweenTwoPages(testa,
                                 # content)
+
+                                for i in data:
+                                    if data[i] == objConf.pattern_pass:
+                                        pattern_pass = i
+                                    elif data[i] == objConf.pattern_login:
+                                        pattern_login = i
+
+                                pool = multiprocessing.Pool(nb_proc)
+
+                                results = pool.imap(func=process, iterable=worker(
+                                    [switch, action, pattern_pass, pattern_login, bad_cred]))
+                                for i, login, password in results:
+                                    if i:
+                                        flag_bf_found = True
+                                        break
+                                pool.terminate()
+                                pool.close()
+
+                                if flag_bf_found:
+                                    objConf.printMessage(
+                                        "  [] Credentials Found : " + login + " " + password, "r", "find")
+                                else:
+                                    objConf.printMessage(
+                                        "  [] No Credentials Found", "r", "error")
+
                             else:
-                                pass
-
-                            for i in data:
-                                if data[i] == objConf.pattern_pass:
-                                    pattern_pass = i
-                                elif data[i] == objConf.pattern_login:
-                                    pattern_login = i
-
-                            pool = multiprocessing.Pool(nb_proc)
-
-                            results = pool.imap(func=process, iterable=worker(
-                                [switch, action, pattern_pass, pattern_login, bad_cred]))
-                            for i, login, password in results:
-                                if i:
-                                    flag_bf_found = True
-                                    break
-                            pool.terminate()
-                            pool.close()
-
-                            if flag_bf_found:
                                 objConf.printMessage(
-                                    "  [] Credentials Found : " + login + " " + password, "r", "find")
-                            else:
-                                objConf.printMessage(
-                                    "  [] No Credentials Found", "r", "error")
+                                        "  [] Form request error : " + response, "r", "error")
 
                         inc_loop += 1
                 else:
