@@ -22,20 +22,24 @@ except ImportError, err:
     print >>sys.stderr, "[X] Unable to import : %s\n" % err
     sys.exit(1)
 
+
 class conf(object):
-    
-    all_module = ["hash", "bruteforce", "favicon", "enumeration", "default_password", "crawler"]
-    all_module_description = ['  [] hash : Hash computation will be performed, trying to identify the web interface.',
-                              "  [] bruteforce : A bruteforce attack will be performed if a login form is detected.",
-                              "  [] favicon : A Hash computation will be performed on the favicon, trying to identify the web interface.",
-                              "  [] enumeration : All forms found will be display to the screen. This module has been implemented so you can easily add password pattern thanks to the form's html response.",
-                              "  [] default_password : A bruteforce attack will be performed if a favicon hash or page hash is found - with default login/password - from password/default-password-web-interface.txt.",
-                              "  [] crawler : If not login form is found within the response of the url provided, the web crawler will try to find a login form." ]
+
+    all_module = ["hash", "bruteforce", "favicon",
+                  "enumeration", "default_password", "crawler"]
+    all_module_description = [
+        '  [] hash : Hash computation will be performed, trying to identify the web interface.',
+        "  [] bruteforce : A bruteforce attack will be performed if a login form is detected.",
+        "  [] favicon : A Hash computation will be performed on the favicon, trying to identify the web interface.",
+        "  [] enumeration : All forms found will be display to the screen. This module has been implemented so you can easily add password pattern thanks to the form's html response.",
+        "  [] default_password : A bruteforce attack will be performed if a favicon hash or page hash is found - with default login/password - from password/default-password-web-interface.txt.",
+        "  [] crawler : If not login form is found within the response of the url provided, the web crawler will try to find a login form."]
 
     def __init__(self, configuration_folder_path, module):
 
         self.configuration_folder_path = configuration_folder_path
-        general_file = self.getFileContent(configuration_folder_path + "general.conf")
+        general_file = self.getFileContent(
+            configuration_folder_path + "general.conf")
 
         self.module = ','.join(module).split(',')
 
@@ -58,38 +62,47 @@ class conf(object):
             elif "Pattern_pass=" in option:
                 self.pattern_pass = option.replace("Pattern_pass=", "")
             elif "Login_dictionary=" in option:
-                self.login_dictionnary = option.replace("Login_dictionary=", "")
+                self.login_dictionnary = option.replace(
+                    "Login_dictionary=", "")
             elif "Pass_dictionary=" in option:
                 self.pass_dictionnary = option.replace("Pass_dictionary=", "")
             elif "Form_tags=" in option:
                 self.form_tags = option.replace("Form_tags=", "")
             elif "Form_tags_password_name=" in option:
-                self.form_tags_password_name = option.replace("Form_tags_password_name=", "")
+                self.form_tags_password_name = option.replace(
+                    "Form_tags_password_name=", "")
             elif "Form_tags_password_type=" in option:
-                self.form_tags_password_type = option.replace("Form_tags_password_type=", "")
+                self.form_tags_password_type = option.replace(
+                    "Form_tags_password_type=", "")
             elif "Form_tags_username_name=" in option:
-                self.form_tags_username_name = option.replace("Form_tags_username_name=", "")
+                self.form_tags_username_name = option.replace(
+                    "Form_tags_username_name=", "")
             elif "Form_tags_username_type=" in option:
-                self.form_tags_username_type = option.replace("Form_tags_username_type=", "")
+                self.form_tags_username_type = option.replace(
+                    "Form_tags_username_type=", "")
             elif "Form_tags_csrf_name=" in option:
-                self.form_tags_csrf_name = option.replace("Form_tags_csrf_name=", "")
+                self.form_tags_csrf_name = option.replace(
+                    "Form_tags_csrf_name=", "")
             elif "Found=" in option:
                 self.entry_favicon = option.replace("Found=", "")
             elif "Default_login_pass_dictionary=" in option:
-                self.default_login_pass_dictionary = option.replace("Default_login_pass_dictionary=", "")
+                self.default_login_pass_dictionary = option.replace(
+                    "Default_login_pass_dictionary=", "")
             elif "Pattern_logged_in=" in option:
-                self.pattern_logged_in = option.replace("Pattern_logged_in=", "")
-        
-        #check default login password file syntax
+                self.pattern_logged_in = option.replace(
+                    "Pattern_logged_in=", "")
+
+        # check default login password file syntax
         try:
-            self.default_login_pass_dictionary = self.extractFileDefaultPassword(self.default_login_pass_dictionary)
+            self.default_login_pass_dictionary = self.extractFileDefaultPassword(
+                self.default_login_pass_dictionary)
         except Exception(), e:
             print e
 
-        #set verbosity 0 by default
+        # set verbosity 0 by default
         self.verbosity = False
 
-        #set color
+        # set color
         self.color = False
 
     def displaySettings(self):
@@ -100,13 +113,14 @@ class conf(object):
     @staticmethod
     def getFileContent(filename):
         try:
-            with open(filename):pass
+            with open(filename):
+                pass
             handle = open(filename, 'r')
             return handle.read().splitlines()
         except IOError:
             print "The file " + filename + " does not exist."
             sys.exit(1)
-    
+
     @staticmethod
     def setFileContent():
         pass
@@ -118,8 +132,6 @@ class conf(object):
                 f.write(line)
         except Exception as e:
             print "Errror : " + e
-
-
 
     def getHTTPVariable(self):
         tmp = []
@@ -133,19 +145,27 @@ class conf(object):
         tmp = {}
         tmp["Pattern_pass"] = self.pattern_pass
         tmp["Pattern_login"] = self.pattern_login
-        tmp["Pass_dictionnary"] = self.getFileContent(self.configuration_folder_path + self.pass_dictionnary)
-        tmp["Login_dictionnary"] = self.getFileContent(self.configuration_folder_path + self.login_dictionnary)
+        tmp["Pass_dictionnary"] = self.getFileContent(
+            self.configuration_folder_path + self.pass_dictionnary)
+        tmp["Login_dictionnary"] = self.getFileContent(
+            self.configuration_folder_path + self.login_dictionnary)
         return tmp
 
     def getTAGVariable(self):
         tmp = {}
         tmp["Form_tags"] = self.form_tags
-        tmp["Form_tags_password_name"] = self.getFileContent(self.configuration_folder_path + self.form_tags_password_name)
-        tmp["Form_tags_password_type"] = self.getFileContent(self.configuration_folder_path + self.form_tags_password_type)
-        tmp["Form_tags_username_name"] = self.getFileContent(self.configuration_folder_path + self.form_tags_username_name)
-        tmp["Form_tags_username_type"] = self.getFileContent(self.configuration_folder_path + self.form_tags_username_type)
-        tmp["Form_tags_csrf_name"] = self.getFileContent(self.configuration_folder_path + self.form_tags_csrf_name)
-        tmp["Pattern_logged_in"] = self.getFileContent(self.configuration_folder_path + self.pattern_logged_in)
+        tmp["Form_tags_password_name"] = self.getFileContent(
+            self.configuration_folder_path + self.form_tags_password_name)
+        tmp["Form_tags_password_type"] = self.getFileContent(
+            self.configuration_folder_path + self.form_tags_password_type)
+        tmp["Form_tags_username_name"] = self.getFileContent(
+            self.configuration_folder_path + self.form_tags_username_name)
+        tmp["Form_tags_username_type"] = self.getFileContent(
+            self.configuration_folder_path + self.form_tags_username_type)
+        tmp["Form_tags_csrf_name"] = self.getFileContent(
+            self.configuration_folder_path + self.form_tags_csrf_name)
+        tmp["Pattern_logged_in"] = self.getFileContent(
+            self.configuration_folder_path + self.pattern_logged_in)
         return tmp
 
     def get_pass_dictionnary(self):
@@ -192,15 +212,15 @@ class conf(object):
     def get_proxy(self):
         return self._proxy
 
-    def set_proxy(self, value = None):
+    def set_proxy(self, value=None):
         try:
             tmp = value.split("|")
             if tmp[0] == "http" or tmp[0] == "https":
-                self._proxy = {tmp[0] : tmp[1] + ":" + tmp[2]}
+                self._proxy = {tmp[0]: tmp[1] + ":" + tmp[2]}
             elif re.match("#", value):
                 self._proxy = None
             else:
-                raise            
+                raise
         except:
             if value == None:
                 self._proxy = None
@@ -210,17 +230,16 @@ class conf(object):
 
     proxy = property(get_proxy, set_proxy)
 
-
     def printMessage(self, message, level, type=None):
-        
+
         if level == "r" or (level == "v" and self.verbosity):
             if self.color:
                 if type == "info":
-                    print(chr(27)+"[0;93m"+message+chr(27)+"[0m")
+                    print(chr(27) + "[0;93m" + message + chr(27) + "[0m")
                 elif type == "find":
-                    print(chr(27)+"[0;32m"+message+chr(27)+"[0m")
+                    print(chr(27) + "[0;32m" + message + chr(27) + "[0m")
                 elif type == "error":
-                    print(chr(27)+"[0;31m"+message+chr(27)+"[0m")
+                    print(chr(27) + "[0;31m" + message + chr(27) + "[0m")
                 else:
                     print message
             else:
@@ -240,24 +259,27 @@ class conf(object):
                 key = ""
                 pas = []
                 if re.match("#favicon:", content[line]):
-                    fav = content[line].rstrip().replace("#favicon:", "").split(";")
-                    #print content[line]
-                    if re.match("#hash:", content[line+1]):
-                        has = content[line+1].rstrip().replace("#hash:", "").split(";")
-                        if re.match("#keywords:", content[line+2]):
-                            key = content[line+2].rstrip().replace("#keywords:", "").split(";")
-                            while content[line+3] != "\n":
-                                pas.append(content[line+3].rstrip())
+                    fav = content[line].rstrip().replace(
+                        "#favicon:", "").split(";")
+                    # print content[line]
+                    if re.match("#hash:", content[line + 1]):
+                        has = content[line + 1].rstrip().replace(
+                            "#hash:", "").split(";")
+                        if re.match("#keywords:", content[line + 2]):
+                            key = content[line + 2].rstrip().replace(
+                                "#keywords:", "").split(";")
+                            while content[line + 3] != "\n":
+                                pas.append(content[line + 3].rstrip())
                                 line += 1
-                                if line+3 >= size:
-                                    break;
+                                if line + 3 >= size:
+                                    break
                         else:
                             raise
                     else:
                         raise
                 else:
                     raise
-                arr.append([fav,has,key,pas])
+                arr.append([fav, has, key, pas])
                 line += 4
         except IOError:
             print "The file " + filename + " does not exist."
@@ -294,7 +316,20 @@ class conf(object):
         print "Can't get Default Login Password..."
         sys.exit()
 
-
-
-
-   
+    def checkIPConformity(self, domain):
+        try:
+            if not domain.startswith("http"):
+                if int(domain.split(":")[1]) == 443:
+                    domain = "https://" + domain
+                else:
+                    domain = "http://" + domain
+            else:
+                if domain.startswith("http"):
+                    if int(domain.split(":")[2]) == 443:
+                        self.printMessage(" \nYou might have trouble with such an url... : " + str(
+                            domain), "r", "find")
+            return domain
+        except Exception, e:
+            self.printMessage(" Error : " + str(
+                e), "v", "error")
+            return False
