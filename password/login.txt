@@ -1,4 +1,6 @@
-root
 admin
-administrator
+foo
+admin@admin
+test
 guest
+demo

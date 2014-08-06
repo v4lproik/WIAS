@@ -13,7 +13,6 @@ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 GNU General Public License for more details.
 '''
 
-
 try:
     from BeautifulSoup import BeautifulSoup
     import lxml.html as XML
@@ -32,32 +31,39 @@ class htmlAnalyser:
         self.__dict__.update(kwargs)
 
     @staticmethod
-    def getAllForm(content):
-        soup = BeautifulSoup(str(content))
-        all_form = soup.findAll('form')
-        soup.close()
-        return all_form
+    def get_all_form(content):
+        try:
+            soup = BeautifulSoup(str(content))
+            all_form = soup.findAll('form')
+            soup.close()
+            return all_form
+        except Exception, e:
+            return []
+
+
 
     @staticmethod
-    def isThereAForm(content):
-        all_form = htmlAnalyser.getAllForm(content)
+    def is_there_a_form(content):
+        all_form = htmlAnalyser.get_all_form(content)
         return len(all_form)
 
-    def isThereALoginForm(self, content, aggressive):
-        all_form = htmlAnalyser.getAllForm(content)
-        
+    def is_there_a_login_form(self, content, aggressive):
+
+        all_form = htmlAnalyser.get_all_form(content)
+
         if all_form == []:
             return None, False
 
         for form in all_form:
-            input_match = self.grepTypeInput(form)
-
+            input_match = self.grep_type_input(form)
+            #print "input_match => " + str(input_match)
             if (len(input_match) < 1 and aggressive):
-                return self.grepNameInput(form), form
+                return self.grep_name_input(form), form
             else:
                 return input_match, form
+
         
-    def grepNameInput(self, form):
+    def grep_name_input(self, form):
         soup = BeautifulSoup(str(form))
         for name in self.Form_tags_password_name:
             res = soup.findAll("input", {"name" : name})
@@ -65,7 +71,7 @@ class htmlAnalyser:
                 return res
         return []
 
-    def grepTypeInput(self, form):
+    def grep_type_input(self, form):
         soup = BeautifulSoup(str(form))
         for name in self.Form_tags_password_type:
             res = soup.findAll("input", {"type" : name})
@@ -73,13 +79,22 @@ class htmlAnalyser:
                 return res
         return []
 
-    def extractFormInput(self, form, pattern_login, pattern_password):
+    def extract_form_input(self, form, pattern_login, pattern_password):
         
         soup = BeautifulSoup(str(form))
 
         #find action
-        action = form["action"]
-        method = form["method"]
+        try:
+            action = form["action"]
+        except Exception, e:
+            action = ""
+
+        #if method doesn't exist, default value is set to "get"
+        try:
+            method = form["method"]
+        except Exception, e:
+            method = "get"
+
 
         #find password
         #first with type.. easiest way
@@ -98,6 +113,7 @@ class htmlAnalyser:
         #find login
         #first with type.. easiest way
         for name in self.Form_tags_username_type:
+            #print name
             res_u = soup.find("input", attrs={"type" : re.compile(name)})
             if res_u:
                 break;
@@ -109,34 +125,49 @@ class htmlAnalyser:
                 if res_u:
                     break;
 
+
+        #if no res_u || no res_p => not form found
+
+        '''
         data = {}
         data[res_u["name"]] = pattern_login
         data[res_p["name"]] = pattern_password
 
+        '''
+        data = {}
+
+        try:
+            data[res_u["name"]] = pattern_login
+            data[res_p["name"]] = pattern_password
+        except Exception, e:
+            return method,action,data,res_p,res_u
+
+
         all_input = soup.findAll("input")
         #print all_input
         for input_n in all_input:
-            
-            if not re.match(str(res_u), str(input_n)) and not re.match(str(res_p), str(input_n)):
+
+            #if not re.match(str(res_u), str(input_n)) and not re.match(str(res_p), str(input_n)):
+            if str(res_u) != str(input_n) and str(res_p) != str(input_n):
+                #print "match " + str(res_u) + "!=" + str(input_n) + " AND match " + str(res_p) + "!=" + str(input_n)
                 try:
                     data[input_n["name"]] = input_n["value"]
                 except:
                     pass
-
         return method,action,data,res_p,res_u
         
     @staticmethod
-    def getDifferenceBetweenTwoPages(page1, page2):
+    def get_difference_between_two_pages(page1, page2):
         s = difflib.SequenceMatcher(None, page1, page2)
         return s.ratio()
 
     @staticmethod
-    def getTitle(page):
+    def get_title(page):
         soup = BeautifulSoup(str(page))
         return soup.find('title').renderContents()
 
     @staticmethod
-    def removeHTMLTag(value):
+    def remove_HTML_Tag(value):
         if isinstance(value, collections.Iterable):
             tmp = []
             for i in value:
@@ -146,7 +177,7 @@ class htmlAnalyser:
             return re.sub('<[^<]+?>', '', value)
 
     @staticmethod
-    def extractDiffFromResponseHTML(request, response):
+    def extract_diff_from_response_HTML(request, response):
         tmp = []
         request = request.splitlines(1)
         response = response.splitlines(1)
@@ -157,27 +188,60 @@ class htmlAnalyser:
 
         return tmp
 
-    def amILoggedInGrep(self, arr, username):
+    def am_I_logged_In_grep(self, arr, username):
         tmp = []
         for i in self.Pattern_logged_in:
             tmp.append(i.replace("#USERNAME", username))
-        
+            
         for y in arr:
             for i in tmp:
                 if re.search(i, y, re.IGNORECASE):
-                    return True
+                    #print i
+                    return i
         
         return False
 
     @staticmethod
-    def extractAllLinks(page):
-        # soup = BeautifulSoup(str(content))
-        # print soup.findAll('a')
-        # return soup.findAll('a', href=True)
+    def extract_all_links(page):
+        soup = BeautifulSoup(str(page))
+        #return soup.findAll('a')
+        #print soup.findAll('a', href=True)
+        #print page
+        m = re.findall('href="(.*?)"', page)
+        #print m
+        return soup.findAll('a', href=True)
 
+
+        #conventional links
         #@http://stackoverflow.com/questions/1080411/retrieve-links-from-web-page-using-python-and-beautiful-soup
-        links = re.findall(r"<a.*?\s*href=\"(.*?)\".*?>(.*?)</a>", page)
-        return links
+        #links = re.findall(r"<a.*?\s*href=\"(.*?)\".*?>(.*?)</a>", page)
+
+        #non-conventional links
+        #print page
+        #m = re.findall('href="(.*?)"', page)
 
 
-         
+        #return m
+
+    def am_I_logged_in_is_form_here(self, page1, page2):
+        soup1 = BeautifulSoup(str(page1))
+        soup2 = BeautifulSoup(str(page2))
+        flag1 = True
+        flag2 = True
+        for name in self.Form_tags_password_type:
+            res_p = soup1.find("input", attrs={"type" : re.compile(name)})
+            if res_p:
+                flag1 = False;
+        soup1.close()
+
+        for name in self.Form_tags_password_type:
+            res_p = soup2.find("input", attrs={"type" : re.compile(name)})
+            if res_p:
+                flag2 = False
+                break;
+        soup2.close()
+
+        if not flag2:
+            return False
+        else:
+            return True

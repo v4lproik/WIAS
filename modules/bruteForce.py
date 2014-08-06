@@ -27,7 +27,7 @@ class bruteForce:
         self.login = login
         self.password = password
 
-    def numberOfCombination(self):
+    def number_of_combination(self):
         return len(self.login) * len(self.password)
 
 

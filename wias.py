@@ -22,8 +22,8 @@ It has not been design for handling javascript "strings transformation" submissi
 '''
 
 __author__ = "v4lproik"
-__date__ = "27/04/2013"
-__version__ = "1.2"
+__date__ = "22/07/2013"
+__version__ = "1.3"
 __maintainer__ = "v4lproik"
 __email__ = "v4lproik@gmail.com"
 __status__ = "Development"
@@ -31,9 +31,9 @@ __twitter__ = "v4lproik"
 
 '''
 Further work is actually  being undertaken :
-- Crawler web to find login form
+- Improvement of web crawler (switch with phantomJS)
 - Improvement of the autologin form process
-- Import specific modules for specific web interfaces
+- Module loader for specific web interfaces
 - Csrf Detection
 - Html Report
 
@@ -51,6 +51,7 @@ try:
     import urlparse
     import multiprocessing
     import difflib
+    import time
 
 except ImportError, err:
     raise
@@ -61,8 +62,8 @@ except ImportError, err:
 def banner():
     banner = '''
     |----------------------------------------------------------|
-    |              Web Interface Auto Submit 1.1               |
-    |                         V4lproik                         |
+    |              Web Interface Auto Submit 1.3               |
+    |                         v4lproik                         |
     |----------------------------------------------------------|\n'''
     print banner
 
@@ -71,7 +72,7 @@ def checkArgs():
     if len(sys.argv) == 3:
         if sys.argv[1] == "-m" and sys.argv[2] == "list":
             print " [*] Modules"
-            for i in conf.all_module_description:
+            for i in conf.ALL_MODULE_DESCRIPTION:
                 print i
         else:
             parser.print_help()
@@ -84,12 +85,12 @@ def checkArgs():
 def checkMod(value):
     try:
         for i in value.split(','):
-            if not i in conf.all_module:
+            if not i in conf.ALL_MODULE:
                 raise
         return value
     except:
         raise argparse.ArgumentTypeError(
-            "Modules must be : " + str(conf.all_module))
+            "Modules must be : " + str(conf.ALL_MODULE))
 
 
 def worker(tab):
@@ -115,27 +116,49 @@ def process(tab):
     data[pattern_pass] = pass_u
 
     flag_response, response = objReq.request(url=urlparse.urljoin(
-        objReq.getUrl(), action), method=method, data=data)
+        objReq.url, action), method=method, data=data)
+
+
+    #print response.headers
+
+
     if flag_response:
+        #print response.url
+        #print data[pattern_login]
+        #print data[pattern_pass]
         content = response.read()
-
-        if htmlAnalyser.getDifferenceBetweenTwoPages(content, bad_cred) != 0:
-
+        #print content
+        if htmlAnalyser.get_difference_between_two_pages(content, bad_cred) != 0:
             # let's perform another test... if another random parameter exists within the web (eg : visit counter)
-            # print content
-            diffs = htmlAnalyser.extractDiffFromResponseHTML(bad_cred, content)
-            diffs = htmlAnalyser.removeHTMLTag(diffs)
+            #print content
+            diffs = htmlAnalyser.extract_diff_from_response_HTML(bad_cred, content)
+            diffs = htmlAnalyser.remove_HTML_Tag(diffs)
+            #print "diff " + str(diffs)
 
-            if not objHtml.amILoggedInGrep(diffs, login):
-                objConf.printMessage(
-                    "   [] Bad Credentials : " + login + "/" + pass_u, "v")
+            res_am_IL_logged = objHtml.am_I_logged_In_grep(diffs, login);
+
+            #first check : grep word
+            if not res_am_IL_logged:
+                #agressive test mode
+                #second check : is the login form still here ?
+                if objHtml.am_I_logged_in_is_form_here(bad_cred, content) and aggressive:
+                    conf.print_message(
+                        "   [] Potentionaly Good Credentials : " + login + "/" + pass_u, "r", "find")
+                    conf.print_message(
+                        "       Pattern found : Password input is not here anymore...", "r")
+                    return True, login, pass_u
+                else:
+                    conf.print_message(
+                        "   [] Bad Credentials : " + login + "/" + pass_u, "v")
                 return False, login, pass_u
             else:
-                objConf.printMessage(
-                    "   [] Potentionaly Good Credentials : " + login + "/" + pass_u, "v", "find")
+                conf.print_message(
+                    "   [] Potentionaly Good Credentials : " + login + "/" + pass_u, "r", "find")
+                conf.print_message(
+                    "       Pattern found : " + res_am_IL_logged, "r")
                 return True, login, pass_u
         else:
-            objConf.printMessage(
+            conf.print_message(
                 "   [] Good Credentials : " + login + "/" + pass_u, "v", "find")
             return True, login, pass_u
 
@@ -145,7 +168,7 @@ def process_401(tab):
     action = tab_plus[1]
 
     cred_encode = webRequest.base64stringAuth(login, pass_u)
-    # print cred_encode
+    #print cred_encode
     # update headers...
 
     objReq.headers["Authorization"] = cred_encode
@@ -155,18 +178,21 @@ def process_401(tab):
 
     if flag_response:
         if response.code == 401:
-            objConf.printMessage(
+            conf.print_message(
                 "   [] Bad Credentials : " + login + "/" + pass_u, "v")
             return False, login, pass_u
         else:
-            objConf.printMessage(
+            conf.print_message(
                 "   [] Good Credentials : " + login + "/" + pass_u, "v", "find")
             return True, login, pass_u
 
 
 if __name__ == "__main__":
 
+    report = []
+
     try:
+        start_time = time.time()
         parser = argparse.ArgumentParser()
         gr1 = parser.add_argument_group("main arguments")
         gr1.add_argument('-f', '--filename', dest='filename',
@@ -175,7 +201,7 @@ if __name__ == "__main__":
                          required=True, help='File with MD5:WEBName - One par line')
         gr1.add_argument(
             '-m', '--module', dest='module', required=True, nargs='+', type=checkMod,
-            help='List of module that be running. For more details regarding modules, try : -m list. Modules List : ' + str(conf.all_module))
+            help='List of module that be running. For more details regarding modules, try : -m list. Modules List : ' + str(conf.ALL_MODULE))
 
         gr2 = parser.add_argument_group("optional arguments")
         gr2.add_argument('-v', '--verbose', dest='verbose',
@@ -184,10 +210,17 @@ if __name__ == "__main__":
                          action='store_true', help='Display Color to stdin')
         gr2.add_argument(
             '-a', '--aggressive', dest='aggressive', default=False,
-            action='store_true', help='Try to identify a login form through different process.')
+            action='store_true', help='Try to identify a login form through different processes such as the input name attribute.')
         gr2.add_argument(
             '-conf', '--conf_folder', dest='conf_folder', default="conf/",
             action='store_true', help='Path of the conf folder where all the configuration files are stored')
+        gr3 = parser.add_argument_group("optional arguments for crawler module")
+        gr3.add_argument('-kf', '--keep_searching_form', dest='keep_searching_form', default=False,
+                         action='store_true', help='Keep looking for every auth forms within the domain. The program won\'t stop after finding the first occurence.')
+        gr4 = parser.add_argument_group("optional arguments for bruteforce module")
+        gr4.add_argument('-kb', '--keep_bruteforcing', dest='keep_bruteforcing', default=False,
+                         action='store_true', help='Keep bruteforcing even if a pair of credentials is found.')
+
 
         banner()
         checkArgs()
@@ -202,36 +235,54 @@ if __name__ == "__main__":
         favdb = args.database
         configuration_folder_path = args.conf_folder
         module = args.module
+        keep_bruteforcing = args.keep_bruteforcing
+        keep_searching_form = args.keep_searching_form
+
 
         # Configuration Init
-        objConf = conf(configuration_folder_path, module)
-        objFav = faviconDB(conf.getFileContent(favdb))
-        objBF = bruteForce(objConf.login_dictionnary, objConf.pass_dictionnary)
-        dic_domain = conf.getFileContent(filename)
+        conf(configuration_folder_path, module)
+
+        if keep_searching_form and not 'crawler' in conf.MODULES:
+            conf.print_message(
+                "\n[*] You cannot set --keep_searching_form (-kf) without activating the crawler module", "r", "error")
+            keep_searching_form = False
+            sys.exit(1)
+
+        if keep_bruteforcing and not 'bruteforce' in conf.MODULES:
+            conf.print_message(
+                "\n[*] You cannot set --keep_bruteforcing (-kb) without activating the bruteforce module", "r", "error")
+            keep_bruteforcing = False
+            sys.exit(1)
+
+
+
+        objFav = faviconDB(conf.get_file_content(favdb))
+        objBF = bruteForce(conf.LOGIN_DICTIONNARY, conf.PASS_DICTIONNARY)
+        dic_domain = conf.get_file_content(filename)
         if verbosity:
-            objConf.verbosity = True
+            conf.VERBOSITY = True
         if color:
-            objConf.color = True
-        kwargs = objConf.getTAGVariable()
+            conf.COLOR = True
+        kwargs = conf.get_tag_variable()
         objHtml = htmlAnalyser(**kwargs)
 
         # Display Settings
-        objConf.printMessage("[*] Settings", "v", "info")
-        objConf.displaySettings()
+        conf.print_message("[*] Settings", "v", "info")
+        conf.print_message(conf.get_settings(), "v", "info")
 
         # Run test for each web interface
         for domain in dic_domain:
 
             # check the domain syntax...
-            res_domain = objConf.checkIPConformity(domain)
+            res_domain = conf.check_ip_conformity(domain)
 
             if not res_domain:
-                objConf.printMessage(
+                conf.print_message(
                     "\n[*] Syntax Error with domain given : " + domain, "r", "error")
                 continue
             else:
                 domain = res_domain
-                objConf.printMessage(
+                conf.print_message(
                     "\n[*] Analyse running for url given : " + domain, "r", "find")
 
             # Init variables for each domain
@@ -241,354 +292,591 @@ if __name__ == "__main__":
             flag_hash_found = False
             flag_favicon_found = False
             flag_bf_found = False
-            nb_proc = int(objConf.thread)
+            nb_proc = int(conf.THREAD)
             action = ""
             html_response = ""
 
             # Check activated modules
-            if "favicon" in objConf.module:
+            if "favicon" in conf.MODULES:
                 # allFavicon = objFav.getAllFavicon()
                 flag_favicon = True
             else:
                 flag_favicon = False
 
-            if "hash" in objConf.module:
+            if "hash" in conf.MODULES:
                 flag_hash = True
             else:
                 flag_hash = False
 
-            if "bruteforce" in objConf.module:
+            if "bruteforce" in conf.MODULES:
                 flag_bf = True
             else:
                 flag_bf = False
 
-            if "enumeration" in objConf.module:
+            if "enumeration" in conf.MODULES:
                 flag_bf = False
                 flag_favicon = False
                 flag_hash = False
                 flag_form = False
 
-            if "default_password" in objConf.module:
+            if "default_password" in conf.MODULES:
                 flag_default_password = True
             else:
                 flag_default_password = False
 
-            if "crawler" in objConf.module:
+            if "crawler" in conf.MODULES:
                 flag_crawler = True
             else:
                 flag_crawler = False
 
+            if "report" in conf.MODULES:
+                flag_report = True
+            else:
+                flag_report = False
+
+            ###############################
+            #           TEST URL
+            ###############################
+
+
+            #we are not extracting login  form at this point however if a 401 http code is found... it is considered by the program as a login form
+            login_form_link_tab = []
+
             # Url Request
             objReq = webRequest(
-                domain, UA=objConf.user_agent, proxy=objConf.proxy,
-                timeout=objConf.http_timeout, cookie_redirection=objConf.redirect_cookie)
+                domain, conf.URL_DO_NOT_SCAN, UA=conf.USER_AGENT, proxy=conf.PROXY,
+                timeout=conf.HTTP_TIMEOUT, cookie_redirection=conf.REDIRECT_COOKIE)
             flag_response, response = objReq.request()
 
             # Exception...
             if flag_response:
-                # if 301 -> update the domain
+                # if 30X code -> update the domain
                 if domain in MyHTTPRedirectHandler.permanent_redirection:
-                    objReq.domain = response.url
-                    objConf.printMessage(
-                        " [] 301 Found : " + domain + " -> " + objReq.domain, "r", "find")
+                    objReq.url = response.url
+                    conf.print_message(
+                        " [] " + str(response.code) + " Found : " + domain + " -> " + objReq.url, "r", "find")
 
                 if response.code == 401:
-                    objConf.printMessage(
+                    conf.print_message(
                         " [] The server returned : " + str(response.code), "r")
 
                     # only bf is available for 401
                     if not flag_bf:
-                        objConf.printMessage(
+                        conf.print_message(
                             " [] Only BruteForce Tests are available for Unauthorised response", "r", "error")
                         continue
 
+                    #401 is a "login form" obviously...
                     flag_favicon = False
                     flag_hash = False
                     flag_form = False
                     flag_login_form = True
                     flag_401 = True
-                    flag_401_url = objReq.domain
+                    flag_401_url = objReq.url
                     data = {}
+                    login_form_link_tab.append([objReq.url, 401, None])
+
+
                     html_response = response.read()
                 elif response.code == 200:
-                    if not "enumeration" in objConf.module:
-                        objConf.printMessage(
+                    #update reponse_url
+                    objReq.url = response.url
+                    if not "enumeration" in conf.MODULES:
+                        conf.print_message(
                             " [] The server returned : " + str(response.code), "r")
                     html_response = response.read()
+                    #print html_response
                 else:
-                    objConf.printMessage(
+                    conf.print_message(
                         " [] The server returned : " + str(response.code), "r")
                     continue
             else:
-                objConf.printMessage(" [] Error : " + str(
+                conf.print_message(" [] Error : " + str(
                     response), "r", "error")
                 continue
 
+
+
+            ###############################
+            # FORM TEST : Is there a form ?
+            ###############################
+
+
             # Form enumeration only
             if not flag_hash and not flag_favicon and not flag_form and not flag_bf:
-                forms = htmlAnalyser.getAllForm(html_response)
+                forms = htmlAnalyser.get_all_form(html_response)
                 if len(forms) > 0:
                     print forms
                 continue
 
+
+
+            ###############################
+            # FAVICON TEST : Do I have a favicon matching the one used by the domain ?
+            ###############################
+
+
+
             # Favicon Tests
             try:
                 if flag_favicon:
-                    objConf.printMessage(" [*] Favicon Tests", "r", "info")
+                    conf.print_message(" [*] Favicon Tests", "r", "info")
 
-                    fav_response, fav = objReq.getFavicon(
+                    fav_response, fav = objReq.get_favicon(
                         html_response=html_response)
 
                     # favicon method
                     md5_favicon = cryptoComputation.md5ChecksumContent(
                         fav.read())
                     if(fav_response):
-                        objConf.printMessage(
+                        conf.print_message(
                             "  [] Favicon md5 computation : " + md5_favicon, "r")
                         fav_db = objFav.isFaviconInDB(md5_favicon)
                         if fav_db:
-                            objConf.printMessage(
+                            conf.print_message(
                                 "  [] Favicon belongs to : " + fav_db, "r")
 
                             # check if default pass stored
-                            flag_favicon_found = objConf.isFaviconPass(
+                            flag_favicon_found = conf.is_favicon_pass(
                                 md5_favicon)
                             if flag_favicon_found:
-                                objConf.printMessage(
+                                conf.print_message(
                                     "  [] Default Passwords Found", "r", "find")
+                            else:
+                                conf.print_message(
+                                    "  [] Default Passwords not Found", "r", "")
                         else:
-                            objConf.printMessage(
+                            conf.print_message(
                                 "  [] No Favicon found in the Database", "r")
-                            if objConf.entry_favicon:
-                                html_title = htmlAnalyser.getTitle(
+                            if conf.entry_favicon:
+                                html_title = htmlAnalyser.get_title(
                                     html_response)
-                                conf.setOneLineFileContent(
+                                conf.set_one_line_file_content(
                                     favdb, md5_favicon + ":" + html_title + "\n")
-                                objConf.printMessage(
+                                conf.print_message(
                                     "  [] Favicon added to the Database", "r")
                     else:
-                        objConf.printMessage(
+                        conf.print_message(
                             "  [] No Favicon found !", "r", "error")
                 else:
-                    objConf.printMessage(" [*] Favicon Tests", "v")
-                    objConf.printMessage("  [] Skipped", "v")
+                    conf.print_message(" [*] Favicon Tests", "v")
+                    conf.print_message("  [] Skipped", "v")
             except Exception, e:
-                objConf.printMessage(
+                conf.print_message(
                     "  [] Favicon Error: " + str(e), "r", "error")
+
+
+
+            ###############################
+            # HASH TEST : Do I have a hash matching the web page of the url ?
+            ###############################
+
 
             # Hash Tests
             if flag_hash:
-                objConf.printMessage(" [*] Hash Tests", "r", "info")
-                objConf.printMessage("  []  Under Development", "r", "error")
+                conf.print_message(" [*] Hash Tests", "r", "info")
+                conf.print_message("  []  Under Development", "r", "error")
             else:
-                objConf.printMessage(" [*] Hash Tests", "v")
-                objConf.printMessage("  [] Skipped", "v")
+                conf.print_message(" [*] Hash Tests", "v")
+                conf.print_message("  [] Skipped", "v")
+
+
+
+            ###############################
+            # LOGIN FORM TEST : Is my login is a login form ?
+            ###############################
+
 
             # Form Tests : Extract All form and then try to identify a login
             # form, according to the configuration file stored in "conf/"
+
+            #array with all the url response code and form extracted
+            #login_form_link_tab = []
+            login_form_link_tab2 = []
+            login_form_link_tab3 = []
+
             if flag_form:
-                objConf.printMessage(" [*] Form Tests", "r", "info")
+                conf.print_message(" [*] Form Tests", "r", "info")
                 flag_response, response = objReq.request()
 
                 if flag_response:
                     content = response.read()
+                    #grep
+                    url_response = response.url
+                    url = objReq.url
+                    response_code = response.code
 
-                    number = htmlAnalyser.isThereAForm(content)
+                    number = htmlAnalyser.is_there_a_form(content)
                     if(number > 0):
-                        objConf.printMessage("  [] " + str(
+                        conf.print_message("  [] " + str(
                             number) + " Form(s) found.", "r")
 
-                        all_form = htmlAnalyser.getAllForm(content)
+                        all_form = htmlAnalyser.get_all_form(content)
                         for form_u in all_form:
-                            input_match, form = objHtml.isThereALoginForm(
+                            input_match, form = objHtml.is_there_a_login_form(
                                 form_u, aggressive)
+
                         # print form
                         if input_match != []:
-                            objConf.printMessage(
+                            conf.print_message(
                                 "  [] " + str(input_match), "v")
                         else:
-                            objConf.printMessage(
+                            conf.print_message(
                                 "  [] Extracting Form Issue", "r", "error")
 
-                        objConf.printMessage(
+                        conf.print_message(
                             " [*] Login Form Tests", "r", "info")
                         if len(input_match) > 0:
                             flag_login_form = True
-                            objConf.printMessage("  [] Found", "r")
 
-                            objConf.printMessage("  [] Login Form", "v")
-                            objConf.printMessage(form, "v")
+                            conf.print_message("  [] Found", "r")
+
+                            conf.print_message("  [] Login Form", "v")
+                            conf.print_message(form, "v")
 
                             # extract information and try to submit
-                            method, action, data, res_u, res_p = objHtml.extractFormInput(
-                                form, objConf.pattern_login, objConf.pattern_pass)
+                            method, action, data, res_u, res_p = objHtml.extract_form_input(
+                                form, conf.PATTERN_LOGIN, conf.PATTERN_PASS)
 
-                            if res_p:
-                                objConf.printMessage(
-                                    "  [] Login Input " + str(res_p), "v")
+                            try:
+                                if res_p:
+                                    conf.print_message(
+                                        "  [] Login Input " + str(res_p), "v")
+                                else:
+                                    raise
+                                if res_u:
+                                    conf.print_message(
+                                        "  [] Password Input " + str(res_u), "v")
+                                else:
+                                    raise
 
-                            if res_u:
-                                objConf.printMessage(
-                                    "  [] Password Input " + str(res_u), "v")
+                                if res_u and res_p and len(data)>0:
+                                    conf.print_message(
+                                        "  [] Method : " + method, "v")
+                                    conf.print_message(
+                                        "  [] Action : " + action, "v")
+                                    conf.print_message(
+                                        "  [] Data : " + str(data), "v")
+                                    #pass form[0] instead of url - contains url_response if redirection
+                                    login_form_link_tab.append([objReq.url, response_code, form])
 
-                            objConf.printMessage(
-                                "  [] Method : " + method, "v")
-                            objConf.printMessage(
-                                "  [] Action : " + action, "v")
-                            objConf.printMessage(
-                                "  [] Data : " + str(data), "v")
+                            except Exception, e:
+                                conf.print_message(
+                                    "   [] Extracting data failed :", "r", "error")
+                                conf.print_message(
+                                    "       password : " + str(res_u) + "\n       login : " + str(res_p), "r")
+
                         else:
-                            objConf.printMessage(
+                            conf.print_message(
                                 "  [] No Login Form Found", "r", "error")
                     else:
-                        objConf.printMessage(
+                        conf.print_message(
                             "  []  No Form Found", "r", "error")
             else:
-                objConf.printMessage(" [*] Form Tests", "v")
-                objConf.printMessage("  [] Skipped", "v")
+                conf.print_message(" [*] Form Tests", "v")
+                conf.print_message("  [] Skipped", "v")
+
+
+
+
+
+
+
+
+
+            ###############################
+            # CRAWLER TEST : Can I find a login form or more within the domain ?
+            ###############################
 
             try:
                 # Crawler... trying to find a login form...
                 if flag_crawler and not flag_login_form:
-                    objConf.printMessage(" [*] Crawler Test", "r", "info")
-                    crawler = mySpider(objReq, objHtml)
-                    crawler.crawl(callback="LoginForm")
+                    conf.print_message(" [*] Crawler Test", "r", "info")
 
-                try:
-                    if crawler.login_form_link:
-                        objConf.printMessage("  [] Login Form Found at : " + str(
-                            crawler.login_form_link), "r", "find")
-                        flag_login_form = True
-                except:
-                    objConf.printMessage(
-                        "  [] No Login Form Found...", "r", "error")
-                else:
-                    if crawler.login_form != None:
-                        # extract information and try to submit
-                        method, action, data, res_u, res_p = objHtml.extractFormInput(
-                            crawler.login_form, objConf.pattern_login, objConf.pattern_pass)
-                        if res_p:
-                            objConf.printMessage(
-                                "  [] Login Input " + str(res_p), "v")
+                    crawler = mySpider(objReq, objReq.url, objReq.domain, objHtml, conf.MAX_DEPTH, conf.EXTENSIONS_DO_NOT_SCAN, conf.LIMIT_REQUEST_P_PAGE, keep_searching_form)
 
-                        if res_u:
-                            objConf.printMessage(
-                                "  [] Password Input " + str(res_u), "v")
+                    try:
+                        crawler.crawl(objReq.url, callback="LoginForm")
+                    except Exception, e:
+                        conf.print_message("  [] Crawler's Issue : " + str(e), "r", "error")
 
-                        objConf.printMessage("  [] Method : " + method, "v")
-                        objConf.printMessage("  [] Action : " + action, "v")
-                        objConf.printMessage("  [] Data : " + str(data), "v")
+
+                    #if found any forms
+                    login_form_link_tab2 = crawler.login_form_link_tab
+                    if len(login_form_link_tab2) > 0:
+                        for form in login_form_link_tab2:
+                            conf.print_message("  [] Login Form Found with code " + str(form[1]) + " at : " + str(
+                                form[0]), "r", "find")
+
+
+                            # extract information and try to submit
+                            if int(form[1]) != 401:
+                                method, action, data, res_u, res_p = objHtml.extract_form_input(
+                                    form[2], conf.PATTERN_LOGIN, conf.PATTERN_PASS)
+
+                                try:
+                                    if res_p:
+                                        conf.print_message(
+                                            "  [] Login Input " + str(res_p), "v")
+                                    else:
+                                        raise
+
+                                    if res_u:
+                                        conf.print_message(
+                                            "  [] Password Input " + str(res_u), "v")
+                                    else:
+                                        raise
+
+                                    if res_u and res_p and len(data)>0:
+                                        conf.print_message(
+                                            "  [] Method : " + method, "v")
+                                        conf.print_message(
+                                            "  [] Action : " + action, "v")
+                                        conf.print_message(
+                                            "  [] Data : " + str(data), "v")
+
+                                        conf.print_message("  [] Updating url : " + objReq.url + " -> " + str(form[0]), "v")
+                                        #pass form[0] instead of url - contains url_response if redirection
+                                        login_form_link_tab.append([form[0], response_code, form[2]])
+                                except Exception, e:
+                                    conf.print_message(
+                                        "   [] Extracting data failed :", "r", "error")
+                                    conf.print_message(
+                                        "       password : " + str(res_u) + "\n       login : " + str(res_p), "r")
+
+                            elif int(form[1]) == 401:
+                                login_form_link_tab.append([form[0], form[1], None])
+
+
+
+                            else:
+                                flag_401 = True
+                                flag_401_url = crawler.login_form_link
+                                conf.print_message("  [] Updating url : " + objReq.url + " -> " + str(form[0]), "v")
+
+                            flag_login_form = True
                     else:
-                        flag_401 = True
-                        flag_401_url = crawler.login_form_link
+                        conf.print_message(
+                            "  [] No Login Form Found...", "r", "error")
+
 
             except Exception, e:
-                objConf.printMessage(
+                conf.print_message(
                     "  [] Crawler's Issue: " + str(e), "r", "error")
 
-            # Bruteforce Tests
-            inc = 0
-            objConf.printMessage(" [*] BruteForce Tests", "r", "info")
-            if flag_login_form:
-                switch = False
-                if flag_bf:
-                    inc += 1
-                if flag_default_password and (flag_favicon_found or flag_hash_found):
-                    inc += 1
-                    switch = True
 
-                if inc > 0:
-                    inc_loop = 0
 
-                    while inc_loop < inc and not flag_bf_found:
-                        if inc_loop == 0 and switch:
-                            objConf.printMessage(
-                                "  [] Test with Default Logins Passwords", "r")
-                            if flag_favicon_found:
-                                arr_default_login_password = objConf.getDefaultLoginPasswordByFavicon(
-                                    md5_favicon)
-                            elif flag_hash_found:
-                                arr_default_login_password = objConf.getDefaultLoginPasswordByHash(
-                                    md5_favicon)
-                            else:
-                                objConf.printMessage(
-                                    "  [] Error... Something Wrong happened during detection...", "r", "error")
-                                continue
-                        else:
-                            objConf.printMessage(
-                                "  [] Test with Dictionaries", "r")
-                            switch = False
 
-                        if flag_401:
 
-                            pool = multiprocessing.Pool(nb_proc)
-                            results = pool.imap(
-                                func=process_401, iterable=worker([switch, flag_401_url]))
-                            for i, login, password in results:
-                                if i:
-                                    flag_bf_found = True
-                                    break
-                            pool.terminate()
-                            pool.close()
 
-                            if flag_bf_found:
-                                objConf.printMessage(
-                                    "  [] Credentials Found : " + login + " " + password, "r", "find")
-                            else:
-                                objConf.printMessage(
-                                    "  [] No Credentials Found", "r", "error")
-                        else:
-                            # get a response with bad creds
-                            flag_response, response = objReq.request(url=urlparse.urljoin(
-                                objReq.getUrl(), action), method=method, data=data)
 
-                            if flag_response:
-                                bad_cred = response.read()
-                                # print bad_cred
-                                # print
-                                # htmlAnalyser.getDifferenceBetweenTwoPages(testa,
-                                # content)
 
-                                for i in data:
-                                    if data[i] == objConf.pattern_pass:
-                                        pattern_pass = i
-                                    elif data[i] == objConf.pattern_login:
-                                        pattern_login = i
 
-                                pool = multiprocessing.Pool(nb_proc)
+            ###############################
+            # BRUTEFORCE TEST
+            ###############################
 
-                                results = pool.imap(func=process, iterable=worker(
-                                    [switch, action, pattern_pass, pattern_login, bad_cred]))
-                                for i, login, password in results:
-                                    if i:
-                                        flag_bf_found = True
-                                        break
-                                pool.terminate()
-                                pool.close()
+            conf.print_message(" [*] BruteForce Tests", "r", "info")
 
-                                if flag_bf_found:
-                                    objConf.printMessage(
-                                        "  [] Credentials Found : " + login + " " + password, "r", "find")
+            if flag_bf:
+
+                #merge al the tabs with forms
+                login_form_link_tab3 = login_form_link_tab
+                login_form_link_tab = []
+                #for array in login_form_link_tab2:
+                #    login_form_link_tab.append(array)
+                for array in login_form_link_tab3:
+                    login_form_link_tab.append(array)
+
+
+                #print login_form_link_tab
+                for array in login_form_link_tab:
+                    inc = 0
+                    url = array[0]
+                    response_code = array[1]
+                    flag_bf_found = False
+                    login_password_result = []
+
+                    if array[1] != 401:
+                        objReq.url = array[0]
+                        form = array[2]
+
+                        #print str(array)
+
+                        method, action, data, c, d = objHtml.extract_form_input(
+                            form, conf.PATTERN_LOGIN, conf.PATTERN_PASS)
+
+                        #print data
+                    #print method
+                    #print str(form)
+
+                    if flag_login_form:
+                        switch = False
+                        if flag_bf:
+                            inc += 1
+                        if flag_default_password and (flag_favicon_found or flag_hash_found):
+                            inc += 1
+                            switch = True
+
+                        if inc > 0:
+                            inc_loop = 0
+
+                            while inc_loop < inc and not flag_bf_found:
+                                if inc_loop == 0 and switch:
+                                    conf.print_message(
+                                        "  [] Test with Default Logins Passwords", "r")
+                                    if flag_favicon_found:
+                                        arr_default_login_password = conf.getDefaultLoginPasswordByFavicon(
+                                            md5_favicon)
+                                    elif flag_hash_found:
+                                        arr_default_login_password = conf.getDefaultLoginPasswordByHash(
+                                            md5_favicon)
+                                    else:
+                                        conf.print_message(
+                                            "  [] Error... Something Wrong happened during detection...", "r", "error")
+                                        continue
                                 else:
-                                    objConf.printMessage(
-                                        "  [] No Credentials Found", "r", "error")
+                                    switch = False
 
-                            else:
-                                objConf.printMessage(
-                                        "  [] Form request error : " + response, "r", "error")
+                                conf.print_message(
+                                    "  [] Test with Dictionaries for URL " + url, "r")
 
-                        inc_loop += 1
-                else:
-                    objConf.printMessage(" [*] BruteForce Tests", "v")
-                    objConf.printMessage("  [] Skipped", "v")
+
+
+                                #normal process...
+                                if response_code == 401:
+
+                                    #action doesn't exist...
+                                    action = ""
+
+                                    pool = multiprocessing.Pool(nb_proc)
+                                    results = pool.imap(
+                                        func=process_401, iterable=worker([switch, url]))
+                                    for i, login, password in results:
+                                        if i:
+                                            flag_bf_found = True
+                                            login_password_result.append([url, [login, password]])
+                                            if not keep_bruteforcing:
+                                                break
+
+                                    #close processes
+                                    pool.terminate()
+                                    pool.close()
+
+                                    if flag_bf_found:
+
+                                        gen = (array for array in login_password_result if url in array[0])
+                                        for array in gen:
+                                            report.append([array[0], array[1][0], array[1][1]])
+                                            conf.print_message(
+                                                "  [] Credentials Found : " + str(array[1][0]) + " " + str(array[1][1]), "r", "find")
+                                    else:
+                                        conf.print_message(
+                                            "  [] No Credentials Found", "r", "error")
+
+                                #if no 401
+                                else:
+                                    # get a response with bad creds
+
+                                    #we need to create request with action !
+
+                                    #if action is relative path, we need to add the domain
+
+
+                                    #if action is url within the domain, replace url to action
+
+                                    '''
+                                    print "request = > " + urlparse.urljoin(
+                                        url, action)
+                                    print "method => " + method
+                                    print "data => " + str(data)
+                                    print "action => " + action
+                                    '''
+
+                                    flag_response, response = objReq.request(url=urlparse.urljoin(
+                                        url, action), method=method, data=data)
+
+                                    if flag_response:
+
+                                        bad_cred = response.read()
+                                        #print bad_cred
+                                        # print
+                                        # htmlAnalyser.get_difference_between_two_pages(testa,
+                                        # content)
+
+                                        for i in data:
+                                            if data[i] == conf.PATTERN_PASS:
+                                                pattern_pass = i
+                                            elif data[i] == conf.PATTERN_LOGIN:
+                                                pattern_login = i
+
+                                        pool = multiprocessing.Pool(nb_proc)
+
+                                        results = pool.imap(func=process, iterable=worker(
+                                            [switch, action, pattern_pass, pattern_login, bad_cred]))
+                                        for i, login, password in results:
+                                            if i:
+                                                flag_bf_found = True
+                                                login_password_result.append([url, [login, password]])
+                                                if not keep_bruteforcing:
+                                                    pool.terminate()
+                                                    pool.close()
+                                                    break
+
+                                        #close processes
+                                        pool.terminate()
+                                        pool.close()
+
+                                        if flag_bf_found:
+                                            gen = (array for array in login_password_result if url in array[0])
+                                            for array in gen:
+                                                report.append([array[0], array[1][0], array[1][1]])
+                                                conf.print_message(
+                                                    "  [] Credentials Found : " + str(array[1][0]) + " " + str(array[1][1]), "r", "find")
+                                        else:
+                                            report.append([array[0], "****", "****"])
+                                            conf.print_message(
+                                                "  [] No Credentials Found", "r", "error")
+
+                                    else:
+                                        conf.print_message(
+                                            "  [] Form request error : " + response, "r", "error")
+
+                                inc_loop += 1
+                        else:
+                            conf.print_message(" [*] BruteForce Tests", "v")
+                            conf.print_message("  [] Skipped", "v")
+                    else:
+                        conf.print_message(
+                            "  [] Skipped because no Login Form Found", "r", "error")
+
             else:
-                objConf.printMessage(
-                    "  [] Skipped because no Login Form Found", "r", "error")
+                conf.print_message("  [] Skipped", "r")
 
-        objConf.printMessage(" \n", "r")
 
+        gen=[i[1]!="****" for i in report]
+        if True in gen:
+            conf.print_message("\n  [] Credentials found", "r")
+            for i in filter(lambda w:w[1]!="****",report):
+                print "   " + i[1] + "/" + i[2] + " | " + i[0]
+
+        if False in gen:
+            conf.print_message("\n  [] Credentials not found", "r")
+            for i in filter(lambda w:w[1]=="****",report):
+                print "   " + i[1] + "/" + i[2] + " | " + i[0]
+            print "\n"
+
+
+
+        conf.print_message(" [*] Report", "r", "info")
+        if flag_report:
+            conf.print_message("  [] Report can be found at the following location : " + str(conf.REPORT_PATH), "r")
+            conf.print_message(" \n", "r")
+
+        print("\n--- %s seconds ---" % str(time.time() - start_time))
+        print "\n"
     except KeyboardInterrupt:
-        objConf.printMessage("Process interrupted by user..", "r", "error")
+        conf.print_message("Process interrupted by user..", "r", "error")
     except:
         print "\n\n", traceback.format_exc()
         pass

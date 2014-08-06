@@ -15,35 +15,14 @@ GNU General Public License for more details.
 
 
 try:
-    pass
+   import re
+
 except ImportError, err:
     raise
     print >>sys.stderr, "[X] Unable to import : %s\n" % err
     sys.exit(1)
 
-class faviconDB:
-
-    def __init__(self, favicon_db):
-        dic = {}
-        for i in favicon_db:
-            try:
-                y = i.split(":")
-                dic[y[0]] = y[1]
-            except:
-                pass
-        self.favicon_db = dic
-
-    def isFaviconInDB(self, favicon):
-        if favicon in self.favicon_db:
-            return self.favicon_db[favicon]
-        else:
-            return False
-
-
-
-
-
-
-
-
-         
+#
+class report():
+    def __init__(self):
+        return

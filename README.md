@@ -1,32 +1,37 @@
 # WIAS
 
-* This program aims to submit login forms automatically just by providing an IP address. This tool can be useful during an internal pentest when you need to quickly check default credentials of web interfaces
-* NB : It has not been design for handling javascript "strings transformation" submission.
+* This program has been designed to submit login forms automatically.
+* Why ?This tool can be useful during an internal pentest when you need to quickly check default credentials of web interfaces.S
 
 ** This program comes with several modules :
 
 * hash : Hash computation will be performed, trying to identify the web interface.
-* bruteforce : A bruteforce attack will be performed if a login form is detected.
+* bruteforce : A bruteforce attack will be performed if a login form is at the root of the domain provided or detected by the crawler module.
 * favicon : A Hash computation will be performed on the favicon, trying to identify the web interface.
-* enumeration : All forms found will be display to the screen. This module has been implemented so you can easily add password pattern thanks to the form's html response.
+* enumeration : All forms found will be display to the screen.
 * default_password : A bruteforce attack will be performed if a favicon hash or page hash is found - with default login/password - from password/default-password-web-interface.txt.
-* crawler : If not login form is found within the response of the url provided, the web crawler will try to find a login form."
-
+* crawler : If no login form is found within the response of the url provided, the web crawler will try to find a login form."
+* report : Create a report in to ./report folder.
 
 ** Several modules has been designed to detect which type of web interface is being scanned.
 
-* Detection modules : Favicon, hash, default_password
-To be able to find which type of web interfaces you provided the tool will be trying to find the favicon of the website. Once found, it will compare the favicon with the database provided (the database at the root folder is a mix of OWASP bdd and NMAP bdd @all credits belong to them) and then submit its default credentials, stored in the file password/default-password-web-interface.
-If the program do not find any entry in your favicon database, it will perform a comparison with the hash of the page.
+* Detection modules : favicon, hash, default_password
+To be able to find which type of web interfaces you provided, the tool will be trying to find the favicon of the website. Once found, it will compare the favicon with the database you provided (by default the database at the root folder is a mix of OWASP bdd and NMAP bdd @all credits belong to them) and then will submit its default credentials, stored in the file password/default-password-web-interface.
+If the program do not find any entry in the favicon database, it will perform another test trying to identify the web interface : comparison with the hash of the page.
 
 * Submit Credentials module: Bruteforce
 If the detection modules fail, you can attempt a bruteforce against the login form in order to find valid credentials.
 
 * Login Form module : Crawler
-If you provid a list of domain or IP and the home page do not provide a login form, you can activate the crawler module. This module aims to crawl the domain in order to find a login form to work on.
+If you provid a list of domain or IP and the home page do not provide a login form, you can activate the crawler module. This module aims to crawl the domain in order to find a login form for the program to work on.
 
 
 Feel free to fork it...
+
+##Usage
+```
+python wias.py -f ip.txt -db favicon-db -m crawler,bruteforce,report,favicon -c -kf
+```
 
 ## Configuration
 Many configuration variables can be found in the folder ROOT/conf/, including configuration for :
@@ -133,9 +138,17 @@ Examples :
 
 ```
 
+## Modification 05/08/14
+
+*Crawler Web added
+*Modification of domains/ips detection (you can now pass full url to the program)
+*Bug fixed
+*Added two new options (-kf & -kb)
+*Report module
+
 ## Todo List
 
-* Crawler web to find login form
+* Create switch with phantomJS
 * Improvement of the autologin form process
 * Import specific modules for specific web interfaces
 * Csrf Detection

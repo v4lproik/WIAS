@@ -1,0 +1,3 @@
+http://192.168.56.101/tikiwiki/
+http://192.168.56.101/gallery2/
+http://192.168.56.101/CryptOMG/

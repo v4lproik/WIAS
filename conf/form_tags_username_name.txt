@@ -1,5 +1,7 @@
-user
+login_usrname
 username
+userName
+UserName
 admin
 email
 inputUser
@@ -7,7 +9,6 @@ userInput
 inputUsername
 usernameInput
 administrator
-login
 loginInput
 inputLogin
 pseudo
@@ -15,4 +16,10 @@ pseudoInput
 inputPseudo
 nickname
 nick
-
+txtUserName
+login
+Login
+loginTXT
+log
+name
+user

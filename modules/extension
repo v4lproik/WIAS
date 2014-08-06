@@ -15,35 +15,21 @@ GNU General Public License for more details.
 
 
 try:
-    pass
+    import urllib2
+    import modules.webRequest
+    import modules.htmlAnalyser as htmlAnalyser
+    import urlparse
+    import sys
 except ImportError, err:
     raise
     print >>sys.stderr, "[X] Unable to import : %s\n" % err
     sys.exit(1)
 
-class faviconDB:
 
-    def __init__(self, favicon_db):
-        dic = {}
-        for i in favicon_db:
-            try:
-                y = i.split(":")
-                dic[y[0]] = y[1]
-            except:
-                pass
-        self.favicon_db = dic
+class extension():
+    allExtensions = []
 
-    def isFaviconInDB(self, favicon):
-        if favicon in self.favicon_db:
-            return self.favicon_db[favicon]
-        else:
-            return False
-
-
-
-
-
-
-
-
-         
+    def __init__(self, name, toScan):
+        self.name = name
+        self.toScan = toScan
+        allExtensions.add(self)

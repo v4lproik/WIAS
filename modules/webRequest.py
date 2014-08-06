@@ -47,11 +47,12 @@ class MyHTTPRedirectHandler(urllib2.HTTPRedirectHandler):
 
 class webRequest:
     all_url = []
-    
-    def __init__(self, domain, UA, method="GET", headers={}, proxy=None, timeout=None, cookie_redirection=False):
+
+    def __init__(self, url, exclude_url, UA, method="GET", headers={}, proxy=None, timeout=None, cookie_redirection=False):
         
-        self.url = ""
-        self.domain = domain
+        self.url = url
+        parsed_uri = urlparse.urlparse(url)
+        self.domain = '{uri.scheme}://{uri.netloc}/'.format(uri=parsed_uri)
         self.method = method
         self.headers = headers
         self.UA = UA
@@ -60,22 +61,17 @@ class webRequest:
         self.timeout = float(timeout)
         self.cookie = cookielib.CookieJar()
         self.cookie_redirection = cookie_redirection
+        self.exclude_url = exclude_url
 
-    def get_domain(self):
-        return self._domain
-
-    def set_domain(self, domain):
-        tab = urlparse.urlparse(domain)
-        self._url = tab[2] + "?" + tab[4]
-        self._domain = tab[0] + "://" + tab[1]
-               
-
-    domain = property(get_domain, set_domain)
 
     def request(self, url="", method="GET", data="", cookie=""):
 
         if not url:
             url = self.url
+        else:
+            for url_e in self.exclude_url:
+                if url.startswith(url_e):
+                    return False, "URL exclude"
 
         if not method:
             method = self.method
@@ -95,6 +91,10 @@ class webRequest:
 
         try:
             if(method.upper()=="GET"):
+                if data:
+                    data = urllib.urlencode(data)
+                    craft_url = craft_url + "?" + data
+                
                 #print "[*] Url : " + craft_url + " => GET"
                 req = urllib2.Request(craft_url, None, self.headers)
             elif(method.upper()=="POST"):
@@ -126,9 +126,10 @@ class webRequest:
 
             response = opener.open(req)
             #print response.url
-            self.cookie = cj
+            #self.cookie = cj
             #print data
             #print cj
+            #print response.read()
 
             return True, response
 
@@ -189,7 +190,7 @@ class webRequest:
     def createUrlAbsoluteRelative(self, url):
         return urlparse.urljoin(self.domain, url)
 
-    def getFavicon(self, html_response=False, url="favicon.ico"):
+    def get_favicon(self, html_response=False, url="favicon.ico"):
 
         #first approach : search through html response
         if not html_response:
@@ -204,16 +205,18 @@ class webRequest:
         else:
             if not html_response:
                 html_response = response.read()
-            #can't find a way to sensitive case :/
+
             icon_path = XML.fromstring(html_response).xpath('//link[@rel="icon" or @rel="ICON" or @rel="shortcut icon" or @rel="SHORTCUT ICON"]/@href')
-            if icon_path:
+
+            if len(icon_path):
+                print urlparse.urljoin(url,icon_path[0])
                 print "  [] Favicon found : " + icon_path[0]
                 return self.request(url=icon_path[0])
             else:
                 print "  [] No Favicon within the html response"
         
         #second approach : guess favicon path
-        url_test = urlparse.urljoin(self.domain + self.url, url)
+        url_test = urlparse.urljoin(self.url, url)
         flag_response, response = self.request(url=url_test) 
         
         if flag_response:
@@ -245,12 +248,6 @@ class webRequest:
         base64string = base64.encodestring('%s:%s' % (username, password)).replace('\n', '')
         authheader =  "Basic %s" % base64string
         return authheader
-
-    def getUrl(self):
-        return self.url
-
-    def getDomain(self):
-        return self.domain
 
     def checkHTTPResponse(handler):
         pass
