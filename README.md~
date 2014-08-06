@@ -142,7 +142,7 @@ Examples :
 
 *Crawler Web added
 *Modification of domains/ips detection (you can now pass full url to the program)
-*Bug fixes
+*Bug fixed
 *Added two new options (-kf & -kb)
 *Report module
 
